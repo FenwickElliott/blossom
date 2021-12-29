@@ -1,0 +1,18 @@
+---
+version: '3'
+services:
+  one: 
+    build: .
+    entrypoint: ["./blossom", "-c", "./config/one.yml"]
+    ports: [ 2001:2001, 3001 ]
+    restart: always
+  two: 
+    build: .
+    entrypoint: ["./blossom", "-c", "./config/two.yml"]
+    ports: [ 2002:2002, 3002 ]
+    restart: always
+  three: 
+    build: .
+    entrypoint: ["./blossom", "-c", "./config/three.yml"]
+    ports: [ 2003:2003, 3003 ]
+    restart: always

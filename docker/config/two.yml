@@ -1,0 +1,10 @@
+---
+cluster_id: 1
+seed_hosts:
+  - one:3001
+  - two:3002
+  - three:3003
+
+node_name: node_2
+node_id: 2
+external_port: 2002
