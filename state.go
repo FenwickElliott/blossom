@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/binary"
 	"io"
+	"log"
 
 	"github.com/lni/dragonboat/v3/statemachine"
 )
@@ -20,11 +22,17 @@ func NewStateMachine(clusterID uint64, nodeID uint64) statemachine.IStateMachine
 	}
 }
 
-func (s *State) Update([]byte) (statemachine.Result, error) {
-	return statemachine.Result{}, nil
+func (s *State) Update(data []byte) (statemachine.Result, error) {
+	// return statemachine.Result{}, nil
+	s.Count++
+	log.Printf("from ExampleStateMachine.Update(), msg: %s, count:%d\n", string(data), s.Count)
+	return statemachine.Result{Value: uint64(len(data))}, nil
 }
-func (s *State) Lookup(interface{}) (interface{}, error) {
-	return nil, nil
+func (s *State) Lookup(query interface{}) (interface{}, error) {
+	// return nil, nil
+	result := make([]byte, 8)
+	binary.LittleEndian.PutUint64(result, s.Count)
+	return result, nil
 }
 func (s *State) SaveSnapshot(io.Writer, statemachine.ISnapshotFileCollection, <-chan struct{}) error {
 	return nil
