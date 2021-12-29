@@ -2,18 +2,17 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/lni/dragonboat/v3"
+	"github.com/lni/dragonboat/v3/client"
 	"github.com/lni/dragonboat/v3/config"
 	"github.com/lni/dragonboat/v3/logger"
 )
@@ -22,11 +21,19 @@ const clusterID uint64 = 128
 
 var (
 	nodeName string
+	nodeID   uint64
+	node     *dragonboat.NodeHost
+	sess     *client.Session
 
 	seeds = []string{
-		"localhost:1111",
-		"localhost:2222",
-		"localhost:3333",
+		"localhost:3001",
+		"localhost:3002",
+		"localhost:3003",
+	}
+	externalPorts = []string{
+		":2001",
+		":2002",
+		":2003",
 	}
 )
 
@@ -36,7 +43,8 @@ func main() {
 	}
 
 	nodeName = os.Args[1]
-	nodeID, err := strconv.ParseUint(nodeName, 10, 64)
+	var err error
+	nodeID, err = strconv.ParseUint(nodeName, 10, 64)
 	fatal(err)
 	nodeName = "node_" + nodeName
 
@@ -44,7 +52,7 @@ func main() {
 
 	dataDir := filepath.Join(".", "data", nodeName)
 
-	node, err := dragonboat.NewNodeHost(config.NodeHostConfig{
+	node, err = dragonboat.NewNodeHost(config.NodeHostConfig{
 		WALDir:         path.Join(dataDir, "wal"),
 		NodeHostDir:    path.Join(dataDir, "lib"),
 		RTTMillisecond: 20,
@@ -80,48 +88,22 @@ func main() {
 		}
 	}
 
-	for t := range time.NewTicker(time.Second).C {
-		func() {
-			sess := node.GetNoOPSession(clusterID)
-			ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
-			defer cancel()
+	sess = node.GetNoOPSession(clusterID)
 
-			res, err := node.SyncPropose(ctx, sess, []byte(fmt.Sprintf("%s - %s", nodeName, t)))
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			log.Println(res)
-		}()
-	}
-
-	select {}
+	log.Fatal(ServeHTTP())
 }
 
 func init() {
-	// log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-	// // intercept logs
-
-	logger.GetLogger("raft").SetLevel(logger.INFO)
+	logger.GetLogger("raft").SetLevel(logger.WARNING)
 	logger.GetLogger("rsm").SetLevel(logger.WARNING)
 	logger.GetLogger("transport").SetLevel(logger.WARNING)
 	logger.GetLogger("grpc").SetLevel(logger.WARNING)
+	gin.SetMode(gin.ReleaseMode)
 }
 
 func fatal(err error) {
 	if err != nil {
 		_, f, l, _ := runtime.Caller(1)
 		log.Fatalf("fatal error thrown by: %s:%d, error: %s", f, l, err)
-	}
-}
-
-func notes() {
-	if false {
-		// https://github.com/golang/go/issues/17393
-		if runtime.GOOS == "darwin" {
-			signal.Ignore(syscall.Signal(0xd))
-		}
 	}
 }
